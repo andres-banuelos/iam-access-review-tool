@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IAM Access Review — {{ tenant_name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      --color-bg:        #f7f6f2;
+      --color-surface:   #ffffff;
+      --color-border:    #d4d1ca;
+      --color-text:      #28251d;
+      --color-muted:     #6b6a67;
+      --color-faint:     #9e9d9a;
+      --color-high:      #a12c2c;
+      --color-high-bg:   #fdf1f1;
+      --color-high-bd:   #e8b4b4;
+      --color-med:       #8a6800;
+      --color-med-bg:    #fdf8eb;
+      --color-med-bd:    #e0cf97;
+      --color-low:       #2d6a2d;
+      --color-low-bg:    #f1faf1;
+      --color-low-bd:    #a8d5a8;
+      --color-info:      #1e5a8a;
+      --color-info-bg:   #eef5fb;
+      --color-info-bd:   #a0c4e3;
+      --color-accent:    #01696f;
+      --radius: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.05);
+    }
+    body {
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      padding: 32px 24px 64px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1100px; margin: 0 auto; }
+    .cover {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 40px 48px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+    .cover-eyebrow {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--color-accent); margin-bottom: 12px;
+    }
+    .cover-title { font-size: 26px; font-weight: 700; color: var(--color-text); margin-bottom: 4px; }
+    .cover-subtitle { font-size: 15px; color: var(--color-muted); margin-bottom: 28px; }
+    .cover-meta {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px; border-top: 1px solid var(--color-border); padding-top: 20px;
+    }
+    .cover-meta-item { font-size: 12px; }
+    .cover-meta-label { color: var(--color-faint); font-weight: 500; margin-right: 4px; }
+    .cover-meta-value { color: var(--color-text); font-weight: 600; }
+    .section {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 32px 40px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .section-title {
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--color-accent); margin-bottom: 16px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--color-border);
+    }
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px; margin-bottom: 28px;
+    }
+    .kpi { border-radius: var(--radius); padding: 18px 20px; text-align: center; border: 1px solid; }
+    .kpi-value { font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .kpi-label { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+    .kpi-high   { background: var(--color-high-bg); border-color: var(--color-high-bd); color: var(--color-high); }
+    .kpi-medium { background: var(--color-med-bg);  border-color: var(--color-med-bd);  color: var(--color-med); }
+    .kpi-low    { background: var(--color-low-bg);  border-color: var(--color-low-bd);  color: var(--color-low); }
+    .kpi-info   { background: var(--color-info-bg); border-color: var(--color-info-bd); color: var(--color-info); }
+    .kpi-total  { background: #f4f3f0; border-color: var(--color-border); color: var(--color-text); }
+    .scope-row {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      border-top: 1px solid var(--color-border); margin-top: 16px; padding-top: 16px;
+    }
+    .scope-item { font-size: 13px; }
+    .scope-num  { font-weight: 700; font-size: 18px; margin-right: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    thead tr { background: #f4f3f0; }
+    th {
+      text-align: left; padding: 10px 12px;
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--color-muted); border-bottom: 1px solid var(--color-border);
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #eeede9; vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #faf9f7; }
+    .badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 100px; border: 1px solid; white-space: nowrap;
+    }
+    .badge-High         { background: var(--color-high-bg); border-color: var(--color-high-bd); color: var(--color-high); }
+    .badge-Medium       { background: var(--color-med-bg);  border-color: var(--color-med-bd);  color: var(--color-med); }
+    .badge-Low          { background: var(--color-low-bg);  border-color: var(--color-low-bd);  color: var(--color-low); }
+    .badge-Informational{ background: var(--color-info-bg); border-color: var(--color-info-bd); color: var(--color-info); }
+    .group-header td {
+      background: #f4f3f0; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--color-muted); padding: 8px 12px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .evidence { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); white-space: pre-wrap; word-break: break-word; }
+    .cis { font-size: 10px; color: var(--color-faint); border: 1px solid var(--color-border); border-radius: 4px; padding: 1px 5px; display: inline-block; margin-top: 2px; }
+    .footer { margin-top: 32px; text-align: center; font-size: 11px; color: var(--color-faint); }
+    @media print { body { background: white; padding: 0; } .cover, .section { box-shadow: none; border: 1px solid #ccc; } .section { page-break-inside: avoid; } }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page">
+
+  <div class="cover">
+    <div class="cover-eyebrow">Confidential — Internal Audit Deliverable</div>
+    <div class="cover-title">IAM Access Review</div>
+    <div class="cover-subtitle">{{ tenant_name }} &nbsp;·&nbsp; Identity &amp; Access Management Audit</div>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><span class="cover-meta-label">Review Date</span><span class="cover-meta-value">{{ report_date }}</span></div>
+      <div class="cover-meta-item"><span class="cover-meta-label">Generated</span><span class="cover-meta-value">{{ report_time }}</span></div>
+      <div class="cover-meta-item"><span class="cover-meta-label">Tenant ID</span><span class="cover-meta-value" style="font-size:11px;font-family:monospace">{{ tenant_id }}</span></div>
+      <div class="cover-meta-item"><span class="cover-meta-label">Tool</span><span class="cover-meta-value">IAM Access Review Automation v1.0</span></div>
+      <div class="cover-meta-item"><span class="cover-meta-label">Classification</span><span class="cover-meta-value">Confidential</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Executive Summary</div>
+    <div class="kpi-grid">
+      <div class="kpi kpi-high"><div class="kpi-value">{{ counts[RiskLevel.HIGH] }}</div><div class="kpi-label">High Risk</div></div>
+      <div class="kpi kpi-medium"><div class="kpi-value">{{ counts[RiskLevel.MEDIUM] }}</div><div class="kpi-label">Medium Risk</div></div>
+      <div class="kpi kpi-low"><div class="kpi-value">{{ counts[RiskLevel.LOW] }}</div><div class="kpi-label">Low Risk</div></div>
+      <div class="kpi kpi-info"><div class="kpi-value">{{ counts[RiskLevel.INFO] }}</div><div class="kpi-label">Informational</div></div>
+      <div class="kpi kpi-total"><div class="kpi-value">{{ total_findings }}</div><div class="kpi-label">Total Findings</div></div>
+    </div>
+    <p style="color: var(--color-muted); font-size:13px; max-width:72ch; line-height:1.7;">
+      This report presents the results of an automated access review conducted against
+      <strong>{{ tenant_name }}</strong> using Microsoft Graph API read-only access.
+      The review evaluated user accounts, privileged directory role assignments, and service principal
+      permissions against industry thresholds aligned to CIS Controls and least-privilege principles.
+    </p>
+    <div class="scope-row">
+      <div class="scope-item"><span class="scope-num">{{ total_users }}</span> Users Reviewed</div>
+      <div class="scope-item"><span class="scope-num">{{ total_roles }}</span> Role Assignments</div>
+      <div class="scope-item"><span class="scope-num">{{ total_sps }}</span> Service Principals</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Detailed Findings</div>
+    {% if not findings %}
+      <p style="color: var(--color-muted); font-style: italic;">No findings identified. Access configuration appears compliant with configured thresholds.</p>
+    {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th style="width:90px">Risk</th>
+          <th style="width:200px">Principal</th>
+          <th>Finding Detail</th>
+          <th style="width:240px">Recommendation</th>
+          <th style="width:160px">Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(last_cat="") %}
+        {% for f in findings %}
+          {% if f.category.value != ns.last_cat %}
+            <tr class="group-header"><td colspan="5">{{ f.category.value }}</td></tr>
+            {% set ns.last_cat = f.category.value %}
+          {% endif %}
+          <tr>
+            <td><span class="badge badge-{{ f.risk.value }}">{{ f.risk.value }}</span></td>
+            <td><strong>{{ f.principal_name }}</strong><br><span class="evidence">{{ f.principal_id }}</span></td>
+            <td>
+              {{ f.detail }}
+              {% if f.cis_control %}<br><span class="cis">{{ f.cis_control }}</span>{% endif %}
+            </td>
+            <td style="color: var(--color-muted)">{{ f.recommendation }}</td>
+            <td><span class="evidence">{{ f.evidence }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-title">Methodology &amp; Scope</div>
+    <table style="font-size:13px;">
+      <thead><tr><th>Check</th><th>Description</th><th>Threshold</th><th>Risk Rating</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Overprivileged Inactive Users</strong></td><td>Users holding high-privilege directory roles with no recent sign-in activity</td><td>90 days inactivity</td><td><span class="badge badge-High">High</span></td></tr>
+        <tr><td><strong>Orphaned Accounts</strong></td><td>Enabled user accounts with no sign-in activity beyond the threshold or that have never signed in</td><td>90 days / never</td><td><span class="badge badge-Medium">Medium</span></td></tr>
+        <tr><td><strong>Elevated Guest Accounts</strong></td><td>External (B2B Guest) users assigned directory roles</td><td>Any directory role</td><td><span class="badge badge-High">High</span></td></tr>
+        <tr><td><strong>Stale Role Assignments</strong></td><td>Non-privileged role assignments where the principal is inactive, suggesting the role is unused</td><td>90 days inactivity</td><td><span class="badge badge-Low">Low</span></td></tr>
+        <tr><td><strong>Excessive Service Principal Permissions</strong></td><td>Service principals holding high-privilege directory roles</td><td>Any HIGH_PRIV_ROLES assignment</td><td><span class="badge badge-High">High</span></td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:16px; font-size:12px; color: var(--color-muted);">
+      <strong>Data source:</strong> Microsoft Graph API (read-only). Permissions: <code>User.Read.All</code>, <code>AuditLog.Read.All</code>, <code>Directory.Read.All</code>.
+      Sign-in activity requires Entra ID P1 or P2 licensing.
+    </p>
+  </div>
+
+  <div class="footer">
+    Generated by IAM Access Review Automation Tool &nbsp;·&nbsp;
+    {{ tenant_name }} &nbsp;·&nbsp; {{ report_date }} &nbsp;·&nbsp;
+    <strong>Confidential — Do not distribute without authorisation</strong>
+  </div>
+
+</div>
+</body>
+</html>
