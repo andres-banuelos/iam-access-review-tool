@@ -10,7 +10,6 @@ from src.config import HIGH_PRIV_ROLES, INACTIVE_USER_DAYS, NEW_ACCOUNT_GRACE_DA
 
 from .findings import Finding, FindingCategory, RiskLevel
 
-
 RISK_ORDER = {
     RiskLevel.HIGH: 0,
     RiskLevel.MEDIUM: 1,
@@ -19,15 +18,12 @@ RISK_ORDER = {
 }
 
 
-
 def _days_since(iso_datetime: str | None) -> int | None:
     """Return the number of days since an ISO-8601 timestamp."""
     if not iso_datetime:
         return None
-
     parsed = datetime.fromisoformat(iso_datetime.replace("Z", "+00:00"))
     return (datetime.now(timezone.utc) - parsed).days
-
 
 
 def _best_sign_in_age(user: dict[str, Any]) -> int | None:
@@ -40,11 +36,9 @@ def _best_sign_in_age(user: dict[str, Any]) -> int | None:
     return min(valid_ages) if valid_ages else None
 
 
-
 def _user_lookup(users: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Build a user lookup table keyed by principal id."""
     return {user["id"]: user for user in users}
-
 
 
 def _role_assignments_by_principal(
@@ -67,7 +61,6 @@ def _role_assignments_by_principal(
         grouped[assignment["principalId"]].append(role_name)
 
     return dict(grouped)
-
 
 
 def check_overprivileged_inactive(
@@ -135,7 +128,6 @@ def check_overprivileged_inactive(
     return findings
 
 
-
 def check_orphaned_accounts(
     users: list[dict[str, Any]],
     threshold_days: int = INACTIVE_USER_DAYS,
@@ -198,7 +190,6 @@ def check_orphaned_accounts(
     return findings
 
 
-
 def check_guest_with_elevated_roles(
     users: list[dict[str, Any]],
     role_assignments: list[dict[str, Any]],
@@ -234,7 +225,6 @@ def check_guest_with_elevated_roles(
         )
 
     return findings
-
 
 
 def check_stale_role_assignments(
@@ -282,7 +272,6 @@ def check_stale_role_assignments(
     return findings
 
 
-
 def check_excessive_service_principals(
     service_principals: list[dict[str, Any]],
     role_assignments: list[dict[str, Any]],
@@ -321,7 +310,6 @@ def check_excessive_service_principals(
         )
 
     return findings
-
 
 
 def run_all_checks(

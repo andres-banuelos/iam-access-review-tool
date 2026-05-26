@@ -14,7 +14,6 @@ from src.analyzers.access_analyzer import (
 from src.analyzers.findings import FindingCategory, RiskLevel
 
 
-
 def _days_ago(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
@@ -116,7 +115,6 @@ SERVICE_PRINCIPALS = [
 ]
 
 
-
 def test_overprivileged_inactive_flags_only_inactive_privileged_user() -> None:
     findings = check_overprivileged_inactive(
         [PRIV_INACTIVE_USER, PRIV_ACTIVE_USER],
@@ -126,7 +124,6 @@ def test_overprivileged_inactive_flags_only_inactive_privileged_user() -> None:
     assert any(finding.principal_id == "user-001" for finding in findings)
     assert all(finding.principal_id != "user-002" for finding in findings)
     assert all(finding.risk is RiskLevel.HIGH for finding in findings)
-
 
 
 def test_guest_elevated_role_is_flagged() -> None:
@@ -139,13 +136,11 @@ def test_guest_elevated_role_is_flagged() -> None:
     assert all(finding.category is FindingCategory.GUEST_ELEVATED for finding in findings)
 
 
-
 def test_excessive_service_principal_is_flagged() -> None:
     findings = check_excessive_service_principals(SERVICE_PRINCIPALS, ROLE_ASSIGNMENTS)
 
     assert any(finding.principal_id == "sp-001" for finding in findings)
     assert all(finding.risk is RiskLevel.HIGH for finding in findings)
-
 
 
 def test_orphaned_account_never_signed_in_is_flagged() -> None:
@@ -166,7 +161,6 @@ def test_orphaned_account_never_signed_in_is_flagged() -> None:
     assert any(finding.principal_id == "user-004" for finding in findings)
 
 
-
 def test_new_account_inside_grace_period_is_not_flagged() -> None:
     new_user = {
         "id": "user-005",
@@ -183,7 +177,6 @@ def test_new_account_inside_grace_period_is_not_flagged() -> None:
 
     findings = check_orphaned_accounts([new_user])
     assert findings == []
-
 
 
 def test_stale_non_privileged_role_assignment_is_flagged() -> None:
