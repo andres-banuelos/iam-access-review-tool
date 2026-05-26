@@ -86,7 +86,10 @@ async def run_review(args: argparse.Namespace) -> int:
     )
 
     findings = run_all_checks(users, role_assignments, service_principals)
-    risk_counts = {level: sum(1 for finding in findings if finding.risk is level) for level in RiskLevel}
+    risk_counts = {
+        level: sum(1 for finding in findings if finding.risk is level)
+        for level in RiskLevel
+    }
 
     LOGGER.info(
         "Generated %s findings (High=%s, Medium=%s, Low=%s, Informational=%s)",

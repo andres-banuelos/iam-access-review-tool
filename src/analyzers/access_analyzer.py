@@ -93,11 +93,12 @@ def check_overprivileged_inactive(
                     principal_name=user["displayName"],
                     principal_id=principal_id,
                     detail=(
-                        f"Holds privileged role(s): {joined_roles}. No sign-in activity is on record."
+                        f"Holds privileged role(s): {joined_roles}."
+                        " No sign-in activity is on record."
                     ),
                     recommendation=(
-                        "Revoke privileged access or validate the account's business purpose. "
-                        "If this is a documented break-glass account, verify compensating controls."
+                        "Revoke privileged access or validate the account's business purpose."
+                        " If this is a documented break-glass account, verify compensating controls."
                     ),
                     evidence="lastSignIn: Never",
                     cis_control="CIS Control 5.4 — Restrict Administrator Privileges",
@@ -113,12 +114,13 @@ def check_overprivileged_inactive(
                     principal_name=user["displayName"],
                     principal_id=principal_id,
                     detail=(
-                        f"Holds privileged role(s): {joined_roles}. Last sign-in was {sign_in_age} days ago "
-                        f"(threshold: {threshold_days} days)."
+                        f"Holds privileged role(s): {joined_roles}."
+                        f" Last sign-in was {sign_in_age} days ago"
+                        f" (threshold: {threshold_days} days)."
                     ),
                     recommendation=(
-                        "Perform user attestation and remove the privileged role if no longer required. "
-                        "Consider Microsoft Entra PIM for just-in-time elevation."
+                        "Perform user attestation and remove the privileged role if no longer required."
+                        " Consider Microsoft Entra PIM for just-in-time elevation."
                     ),
                     evidence=f"lastSignIn: {sign_in_age} days ago",
                     cis_control="CIS Control 5.4 — Restrict Administrator Privileges",
@@ -152,15 +154,17 @@ def check_orphaned_accounts(
                         principal_name=user["displayName"],
                         principal_id=user["id"],
                         detail=(
-                            "Account is enabled but has never signed in. "
-                            f"Account age: {created_age} days."
+                            "Account is enabled but has never signed in."
+                            f" Account age: {created_age} days."
                         ),
                         recommendation=(
-                            "Validate ownership with HR and the manager of record. Disable or delete the "
-                            "account if no active business owner can be confirmed."
+                            "Validate ownership with HR and the manager of record."
+                            " Disable or delete the account if no active business owner"
+                            " can be confirmed."
                         ),
                         evidence=(
-                            f"accountEnabled: True | lastSignIn: Never | accountAge: {created_age}d"
+                            f"accountEnabled: True | lastSignIn: Never"
+                            f" | accountAge: {created_age}d"
                         ),
                         cis_control="CIS Control 5.3 — Disable Dormant Accounts",
                     )
@@ -175,12 +179,12 @@ def check_orphaned_accounts(
                     principal_name=user["displayName"],
                     principal_id=user["id"],
                     detail=(
-                        f"Account is enabled but inactive for {sign_in_age} days "
-                        f"(threshold: {threshold_days} days)."
+                        f"Account is enabled but inactive for {sign_in_age} days"
+                        f" (threshold: {threshold_days} days)."
                     ),
                     recommendation=(
-                        "Initiate account attestation with the business owner or line manager and disable "
-                        "the account pending confirmation of ongoing need."
+                        "Initiate account attestation with the business owner or line manager"
+                        " and disable the account pending confirmation of ongoing need."
                     ),
                     evidence=f"accountEnabled: True | lastSignIn: {sign_in_age}d ago",
                     cis_control="CIS Control 5.3 — Disable Dormant Accounts",
@@ -216,8 +220,9 @@ def check_guest_with_elevated_roles(
                     f"External guest account holds directory role: {assignment['roleName']}."
                 ),
                 recommendation=(
-                    "Remove the directory role from the guest account. External identities should use "
-                    "resource-scoped access with strong lifecycle governance."
+                    "Remove the directory role from the guest account."
+                    " External identities should use resource-scoped access"
+                    " with strong lifecycle governance."
                 ),
                 evidence=f"userType: Guest | role: {assignment['roleName']}",
                 cis_control="CIS Control 6.2 — Establish Access Granting Process",
@@ -257,12 +262,13 @@ def check_stale_role_assignments(
                 principal_name=user["displayName"],
                 principal_id=user["id"],
                 detail=(
-                    f"Role '{assignment['roleName']}' appears stale because the user last signed in "
-                    f"{sign_in_age} days ago."
+                    f"Role '{assignment['roleName']}' appears stale because the user"
+                    f" last signed in {sign_in_age} days ago."
                 ),
                 recommendation=(
-                    "Review whether the role is still needed. If the entitlement is project-based or temporary, "
-                    "replace it with time-bound assignment or remove it."
+                    "Review whether the role is still needed."
+                    " If the entitlement is project-based or temporary,"
+                    " replace it with time-bound assignment or remove it."
                 ),
                 evidence=f"role: {assignment['roleName']} | lastSignIn: {sign_in_age}d ago",
                 cis_control="CIS Control 6.8 — Define and Maintain Role-Based Access Control",
@@ -287,8 +293,12 @@ def check_excessive_service_principals(
 
     for principal_id, role_names in privileged_service_principals.items():
         service_principal = service_principal_map.get(principal_id)
-        principal_name = service_principal["displayName"] if service_principal else principal_id
-        sp_type = service_principal.get("spType", "unknown") if service_principal else "unknown"
+        principal_name = (
+            service_principal["displayName"] if service_principal else principal_id
+        )
+        sp_type = (
+            service_principal.get("spType", "unknown") if service_principal else "unknown"
+        )
 
         findings.append(
             Finding(
@@ -297,12 +307,13 @@ def check_excessive_service_principals(
                 principal_name=principal_name,
                 principal_id=principal_id,
                 detail=(
-                    f"Service principal holds privileged role(s): {', '.join(sorted(role_names))}. "
-                    f"Type: {sp_type}."
+                    f"Service principal holds privileged role(s):"
+                    f" {', '.join(sorted(role_names))}. Type: {sp_type}."
                 ),
                 recommendation=(
-                    "Confirm the service principal's business purpose and reduce directory-level privileges to "
-                    "resource-scoped permissions wherever possible."
+                    "Confirm the service principal's business purpose and reduce"
+                    " directory-level privileges to resource-scoped permissions"
+                    " wherever possible."
                 ),
                 evidence=f"spType: {sp_type} | roles: {', '.join(sorted(role_names))}",
                 cis_control="CIS Control 5.6 — Centralize Account Management",
@@ -325,5 +336,7 @@ def run_all_checks(
     findings.extend(check_orphaned_accounts(users))
     findings.extend(check_stale_role_assignments(users, role_assignments))
 
-    findings.sort(key=lambda finding: (RISK_ORDER[finding.risk], finding.principal_name.casefold()))
+    findings.sort(
+        key=lambda finding: (RISK_ORDER[finding.risk], finding.principal_name.casefold())
+    )
     return findings

@@ -75,7 +75,7 @@ def require_azure_credentials() -> None:
 
     if missing:
         missing_vars = ", ".join(missing)
-        raise EnvironmentError(
+        raise OSError(
             "Missing required environment variables for live mode: "
             f"{missing_vars}. Copy .env.example to .env and fill in your Azure credentials."
         )

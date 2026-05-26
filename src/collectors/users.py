@@ -7,8 +7,8 @@ from typing import Any
 
 from kiota_abstractions.base_request_configuration import RequestConfiguration
 from msgraph import GraphServiceClient
-from msgraph.generated.models.user import User
 from msgraph.generated.models.o_data_errors.o_data_error import ODataError
+from msgraph.generated.models.user import User
 from msgraph.generated.users.users_request_builder import UsersRequestBuilder
 
 from .graph_client import raise_graph_error
@@ -56,7 +56,6 @@ async def fetch_all_users(client: GraphServiceClient) -> list[dict[str, Any]]:
     return users
 
 
-
 def _normalize_user(user: User) -> dict[str, Any]:
     """Convert an SDK user model into an analyzer-friendly dictionary."""
     sign_in = user.sign_in_activity
@@ -77,7 +76,9 @@ def _normalize_user(user: User) -> dict[str, Any]:
         "userPrincipalName": user.user_principal_name or "",
         "mail": user.mail or "",
         "accountEnabled": bool(user.account_enabled),
-        "createdDateTime": user.created_date_time.isoformat() if user.created_date_time else None,
+        "createdDateTime": (
+            user.created_date_time.isoformat() if user.created_date_time else None
+        ),
         "userType": user.user_type or "Member",
         "lastInteractiveSignIn": last_interactive_sign_in,
         "lastNonInteractiveSignIn": last_non_interactive_sign_in,
