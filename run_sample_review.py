@@ -1,106 +1,119 @@
 #!/usr/bin/env python3
-"""
-run_sample_review.py -- Offline simulation mode for IAM Access Review Automation Tool.
-
-This script bypasses Microsoft Graph completely and feeds canned JSON data
-into the existing analyzer + report pipeline. Use this for:
-  * Demoing the tool without Azure access
-  * Validating findings logic
-  * Generating portfolio screenshots
+"""Offline simulation entry point — runs the full review pipeline without Azure credentials.
 
 Usage:
-    python3 run_sample_review.py --tenant-name "Demo Corp IAM"
+    python run_sample_review.py [--tenant-name "Demo Corp"] [--format html|md|both]
 """
+
+from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
-from datetime import datetime
-
-# Ensure src/ is importable when running from repo root
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import logging
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from pathlib import Path
 
 from src.analyzers.access_analyzer import run_all_checks
+from src.analyzers.findings import RiskLevel
 from src.reporters.html_reporter import render_html_report
 from src.reporters.markdown_reporter import render_markdown_report
 
-SAMPLE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_data")
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+LOGGER = logging.getLogger(__name__)
+
+SAMPLE_DIR = Path(__file__).resolve().parent / "sample_data"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
+
+
+def configure_logging(verbose: bool = False) -> None:
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
 
 
 def load_json(filename: str) -> list:
-    """Load a JSON file from sample_data/ and return its contents."""
-    path = os.path.join(SAMPLE_DIR, filename)
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """Load a JSON fixture from the sample_data directory."""
+    path = SAMPLE_DIR / filename
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Offline simulation run — no Azure credentials required."
+        description="IAM Access Review — offline simulation mode (no Azure credentials required)."
     )
     parser.add_argument(
         "--tenant-name",
-        default="Demo Tenant",
-        help="Tenant display name shown in the report header (default: Demo Tenant)",
+        default="Demo Corp",
+        help="Tenant name shown in the report header.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--format",
+        choices=["html", "md", "both"],
+        default="both",
+        help="Report output format.",
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = parse_args()
-    ts = datetime.now().strftime("sample_%Y%m%d_%H%M%S")
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
+    configure_logging(verbose=args.verbose)
 
-    print("=" * 60)
-    print("  IAM Access Review Automation Tool -- Offline Simulation")
-    print(f"  Tenant (simulated): {args.tenant_name}")
-    print("=" * 60)
+    LOGGER.info("Starting offline simulation for tenant '%s'", args.tenant_name)
 
-    # ── Step 1: Load sample data ──────────────────────────────────
-    print("\n[1/3] Loading sample data from ./sample_data ...")
     users = load_json("users.json")
     role_assignments = load_json("role_assignments.json")
     service_principals = load_json("service_principals.json")
-    print(f"      ✓ Users:              {len(users)}")
-    print(f"      ✓ Role assignments:   {len(role_assignments)}")
-    print(f"      ✓ Service principals: {len(service_principals)}")
 
-    # ── Step 2: Run risk analysis ─────────────────────────────────
-    print("\n[2/3] Running risk analysis checks ...")
+    LOGGER.info(
+        "Loaded %s users, %s role assignments, %s service principals from sample_data/",
+        len(users),
+        len(role_assignments),
+        len(service_principals),
+    )
+
     findings = run_all_checks(users, role_assignments, service_principals)
-    high = sum(1 for f in findings if f.risk.value == "High")
-    med  = sum(1 for f in findings if f.risk.value == "Medium")
-    low  = sum(1 for f in findings if f.risk.value == "Low")
-    print(f"      ✓ {len(findings)} findings: {high} High | {med} Medium | {low} Low")
+    risk_counts = {level: sum(1 for f in findings if f.risk is level) for level in RiskLevel}
 
-    # ── Step 3: Render reports ────────────────────────────────────
-    print("\n[3/3] Generating reports ...")
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    html_path = os.path.join(OUTPUT_DIR, f"iam_review_{ts}.html")
-    md_path   = os.path.join(OUTPUT_DIR, f"iam_review_{ts}.md")
-
-    render_html_report(
-        findings=findings,
-        tenant_name=args.tenant_name,
-        tenant_id="00000000-0000-0000-0000-000000000000",
-        total_users=len(users),
-        total_roles=len(role_assignments),
-        total_sps=len(service_principals),
-        output_path=html_path,
-    )
-    render_markdown_report(
-        findings=findings,
-        tenant_name=args.tenant_name,
-        output_path=md_path,
+    LOGGER.info(
+        "Generated %s findings (High=%s, Medium=%s, Low=%s, Informational=%s)",
+        len(findings),
+        risk_counts[RiskLevel.HIGH],
+        risk_counts[RiskLevel.MEDIUM],
+        risk_counts[RiskLevel.LOW],
+        risk_counts[RiskLevel.INFO],
     )
 
-    print(f"      ✓ HTML report:     {html_path}")
-    print(f"      ✓ Markdown report: {md_path}")
-    print("\n✓ Simulation complete. Open the HTML report in your browser.")
-    print("=" * 60)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("sample_%Y%m%d_%H%M%S")
+
+    if args.format in {"html", "both"}:
+        html_path = OUTPUT_DIR / f"iam_review_{timestamp}.html"
+        render_html_report(
+            findings=findings,
+            tenant_name=args.tenant_name,
+            tenant_id="00000000-0000-0000-0000-000000000000",
+            total_users=len(users),
+            total_roles=len(role_assignments),
+            total_sps=len(service_principals),
+            output_path=html_path,
+        )
+        LOGGER.info("Wrote HTML report to %s", html_path)
+
+    if args.format in {"md", "both"}:
+        md_path = OUTPUT_DIR / f"iam_review_{timestamp}.md"
+        render_markdown_report(
+            findings=findings,
+            tenant_name=args.tenant_name,
+            output_path=md_path,
+        )
+        LOGGER.info("Wrote Markdown report to %s", md_path)
+
+    LOGGER.info("Simulation complete — open the HTML report in your browser")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

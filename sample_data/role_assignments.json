@@ -1,26 +1,32 @@
 [
   {
-    "roleId": "r1",
+    "roleId": "r-global-admin",
     "roleName": "Global Administrator",
     "principalId": "user-001",
     "principalType": "user"
   },
   {
-    "roleId": "r1",
+    "roleId": "r-global-admin",
     "roleName": "Global Administrator",
     "principalId": "user-002",
     "principalType": "user"
   },
   {
-    "roleId": "r2",
+    "roleId": "r-teams-admin",
     "roleName": "Teams Administrator",
     "principalId": "user-003",
     "principalType": "user"
   },
   {
-    "roleId": "r3",
-    "roleName": "User Account Administrator",
+    "roleId": "r-global-admin",
+    "roleName": "Global Administrator",
     "principalId": "sp-001",
     "principalType": "servicePrincipal"
+  },
+  {
+    "roleId": "r-reports-reader",
+    "roleName": "Reports Reader",
+    "principalId": "user-006",
+    "principalType": "user"
   }
 ]

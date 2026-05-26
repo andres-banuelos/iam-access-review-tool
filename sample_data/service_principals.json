@@ -1,10 +1,18 @@
 [
   {
     "id": "sp-001",
-    "displayName": "CI Pipeline SP",
-    "appId": "00000000-0000-0000-0000-000000000001",
+    "displayName": "Deploy Pipeline — Production",
+    "appId": "app-deploy-prod-001",
     "enabled": true,
     "spType": "Application",
-    "createdDateTime": "2024-06-01T10:00:00+00:00"
+    "createdDateTime": "2022-06-01T10:00:00+00:00"
+  },
+  {
+    "id": "sp-002",
+    "displayName": "Monitoring Agent",
+    "appId": "app-monitoring-002",
+    "enabled": true,
+    "spType": "ManagedIdentity",
+    "createdDateTime": "2023-03-15T10:00:00+00:00"
   }
 ]
