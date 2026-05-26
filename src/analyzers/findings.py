@@ -1,51 +1,52 @@
-"""
-findings.py — Dataclass that represents a single audit finding.
+"""Finding models used by the analyzer and reporting layers."""
 
-Each Finding maps directly to a row in the HTML report table.
-Risk levels follow a simple High / Medium / Low taxonomy consistent
-with Big 4 IT audit deliverables.
-"""
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional
+
+from dataclasses import dataclass
 from enum import Enum
 
 
 class RiskLevel(str, Enum):
-    HIGH   = "High"
+    """Normalized finding severity."""
+
+    HIGH = "High"
     MEDIUM = "Medium"
-    LOW    = "Low"
-    INFO   = "Informational"
+    LOW = "Low"
+    INFO = "Informational"
 
 
 class FindingCategory(str, Enum):
-    OVERPRIVILEGED   = "Overprivileged Account"
+    """Supported access review finding categories."""
+
+    OVERPRIVILEGED = "Overprivileged Account"
     ORPHANED_ACCOUNT = "Orphaned Account"
     STALE_PERMISSION = "Stale Permission"
-    EXCESSIVE_SP     = "Excessive Service Principal Permission"
-    GUEST_ELEVATED   = "Elevated Guest Account"
+    EXCESSIVE_SP = "Excessive Service Principal Permission"
+    GUEST_ELEVATED = "Elevated Guest Account"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Finding:
-    """A single access review finding."""
-    category:      FindingCategory
-    risk:          RiskLevel
-    principal_name: str
-    principal_id:   str
-    detail:         str
-    recommendation: str
-    evidence:       str = ""            # supporting data (e.g. last sign-in date)
-    cis_control:    Optional[str] = None  # optional CIS / NIST reference
+    """A single audit finding included in the generated report."""
 
-    def to_dict(self) -> dict:
+    category: FindingCategory
+    risk: RiskLevel
+    principal_name: str
+    principal_id: str
+    detail: str
+    recommendation: str
+    evidence: str = ""
+    cis_control: str | None = None
+
+    def to_dict(self) -> dict[str, str]:
+        """Serialize the finding for tabular export or rendering."""
         return {
-            "Category":       self.category.value,
-            "Risk":           self.risk.value,
-            "Principal":      self.principal_name,
-            "Principal ID":   self.principal_id,
-            "Detail":         self.detail,
+            "Category": self.category.value,
+            "Risk": self.risk.value,
+            "Principal": self.principal_name,
+            "Principal ID": self.principal_id,
+            "Detail": self.detail,
             "Recommendation": self.recommendation,
-            "Evidence":       self.evidence,
-            "CIS Control":    self.cis_control or "",
+            "Evidence": self.evidence,
+            "CIS Control": self.cis_control or "",
         }

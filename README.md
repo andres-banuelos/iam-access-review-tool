@@ -12,38 +12,56 @@
 
 | Check | Risk | Description |
 |---|---|---|
-| Overprivileged inactive accounts | 🔴 High | Users with Global Admin / Owner roles not signed in within 90 days |
-| Elevated guest accounts | 🔴 High | External (B2B Guest) users holding any directory role |
-| Excessive service principal permissions | 🔴 High | App registrations / managed identities with privileged directory roles |
-| Orphaned accounts | 🟡 Medium | Enabled users with no sign-in within 90 days or who have never signed in |
-| Stale role assignments | 🟢 Low | Non-privileged role holders who are inactive, suggesting unused permissions |
+| Overprivileged inactive accounts | 🔴 High | Users with privileged directory roles who have not signed in within the configured inactivity threshold |
+| Elevated guest accounts | 🔴 High | External guest users holding directory roles |
+| Excessive service principal permissions | 🔴 High | Service principals or managed identities holding privileged directory roles |
+| Orphaned accounts | 🟡 Medium | Enabled users with no recent sign-in or no sign-in history beyond a grace period |
+| Stale role assignments | 🟢 Low | Non-privileged role holders whose sign-in activity suggests unused access |
+
+---
+
+## Why This Repo Looks Professional
+
+This project is intentionally structured like a production-grade security engineering repo rather than a one-off demo script:
+
+- Typed, modular Python with clear separation between collection, analysis, and reporting layers.
+- Logging-based CLI execution instead of `print()`-driven flow.
+- Centralized configuration and environment validation.
+- Unit-tested analyzer logic decoupled from live Graph API calls.
+- `pyproject.toml`-based tooling for Ruff, mypy, and pytest.
+- GitHub Actions CI for linting, type checking, formatting, and tests.
+- Pre-commit hooks to keep quality gates local before pushing.
+
+That combination makes it much stronger as a cloud security portfolio project because it demonstrates both IAM knowledge and software engineering discipline.
 
 ---
 
 ## Project Structure
 
-```
+```text
 iam-access-review-tool/
-├── main.py                        # Entry point
+├── main.py
 ├── requirements.txt
-├── .env.example                   # Copy to .env and fill in credentials
+├── pyproject.toml
+├── .pre-commit-config.yaml
+├── .env.example
 ├── src/
 │   ├── config.py
 │   ├── collectors/
-│   │   ├── graph_client.py        # Azure auth + Graph SDK factory
-│   │   ├── users.py               # Pull users + sign-in activity
-│   │   └── roles.py               # Directory roles + service principals
+│   │   ├── graph_client.py
+│   │   ├── users.py
+│   │   └── roles.py
 │   ├── analyzers/
-│   │   ├── findings.py            # Finding dataclass + RiskLevel enum
-│   │   └── access_analyzer.py     # All 5 risk checks
+│   │   ├── findings.py
+│   │   └── access_analyzer.py
 │   └── reporters/
-│       ├── html_reporter.py       # Jinja2 HTML report renderer
-│       └── markdown_reporter.py   # Markdown report renderer
+│       ├── html_reporter.py
+│       └── markdown_reporter.py
 ├── templates/
-│   └── report.html.j2             # Professional HTML audit template
+│   └── report.html.j2
 ├── tests/
-│   └── test_analyzers.py          # Unit tests (no Graph API calls needed)
-└── .github/workflows/ci.yml       # GitHub Actions CI
+│   └── test_analyzers.py
+└── .github/workflows/ci.yml
 ```
 
 ---
@@ -52,57 +70,46 @@ iam-access-review-tool/
 
 - Python 3.10+
 - An Azure account with permissions to create App Registrations
-- Entra ID P1 or P2 licence (required for sign-in activity via `AuditLog.Read.All`)
+- Entra ID P1 or P2 licensing if you want sign-in activity fields exposed through Microsoft Graph
 
 ---
 
 ## Step 1 — Azure App Registration (Read-Only, CLI)
 
 ```bash
-# 1. Log in
 az login
 
-# 2. Create the app registration
 az ad app create \
   --display-name "IAM-Access-Review-Automation" \
   --sign-in-audience AzureADMyOrg
 
-# 3. Capture the Client ID
 APP_ID=$(az ad app list \
   --display-name "IAM-Access-Review-Automation" \
   --query "[0].appId" -o tsv)
 echo "Client ID: $APP_ID"
 
-# 4. Create service principal
 az ad sp create --id $APP_ID
 
-# 5. Generate client secret (copy 'value' — shown ONCE)
 az ad app credential reset --id $APP_ID --years 1
 
-# 6. Get Tenant ID
 az account show --query tenantId -o tsv
 
-# 7. Add read-only Graph permissions
-# User.Read.All
 az ad app permission add --id $APP_ID \
   --api 00000003-0000-0000-c000-000000000000 \
   --api-permissions df021288-bdef-4463-88db-98f22de89214=Role
 
-# AuditLog.Read.All
 az ad app permission add --id $APP_ID \
   --api 00000003-0000-0000-c000-000000000000 \
   --api-permissions b0afded3-3588-46d8-8b3d-9842eff778da=Role
 
-# Directory.Read.All
 az ad app permission add --id $APP_ID \
   --api 00000003-0000-0000-c000-000000000000 \
   --api-permissions 7ab1d382-f21e-4acd-a863-ba3e13f7da61=Role
 
-# 8. Grant admin consent (requires Global Admin or Privileged Role Admin)
 az ad app permission admin-consent --id $APP_ID
 ```
 
-> **Work tenant note:** Step 8 requires a Global Administrator. Ask your Identity/IT team to grant consent for `IAM-Access-Review-Automation` (`$APP_ID`) for `User.Read.All`, `AuditLog.Read.All`, `Directory.Read.All`.
+> **Work tenant note:** Admin consent typically requires a Global Administrator or Privileged Role Administrator. If you are using a corporate tenant, ask your identity team to approve the application permissions for `User.Read.All`, `AuditLog.Read.All`, and `Directory.Read.All`.
 
 ---
 
@@ -113,61 +120,73 @@ git clone https://github.com/andres-banuelos/iam-access-review-tool.git
 cd iam-access-review-tool
 
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
 pip install -r requirements.txt
-
 cp .env.example .env
-# Edit .env: set AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+```
+
+Populate `.env` with:
+
+```env
+AZURE_TENANT_ID=<your-tenant-id>
+AZURE_CLIENT_ID=<your-client-id>
+AZURE_CLIENT_SECRET=<your-client-secret>
+INACTIVE_USER_DAYS=90
+STALE_ROLE_DAYS=90
+NEW_ACCOUNT_GRACE_DAYS=14
+OUTPUT_DIR=./output
 ```
 
 ---
 
-## Step 3 — Run
+## Step 3 — Run the Tool
 
 ```bash
 python main.py --tenant-name "Contoso Ltd"
-
-# HTML only
 python main.py --tenant-name "Contoso Ltd" --format html
-
-# Custom output dir
-python main.py --tenant-name "Contoso Ltd" --output-dir ./reports/Q1-2025
+python main.py --tenant-name "Contoso Ltd" --output-dir ./reports/q2-review
+python main.py --tenant-name "Contoso Ltd" --verbose
 ```
 
-Reports are written to `./output/iam_review_YYYYMMDD_HHMMSS.html` and `.md`.
+Reports are written to timestamped files in the configured output directory.
 
 ---
 
-## Step 4 — Unit Tests
+## Step 4 — Run Quality Checks
 
 ```bash
-python -m pytest tests/ -v
+pip install .[dev]
+ruff check .
+ruff format --check .
+mypy main.py src tests
+pytest -v
 ```
 
-Tests run without any Azure credentials — the analyzer logic is fully decoupled from the Graph API.
+If you want the same checks to run before each commit:
 
----
-
-## Configuration
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `AZURE_TENANT_ID` | ✅ | — | Azure Directory (Tenant) ID |
-| `AZURE_CLIENT_ID` | ✅ | — | App Registration Client ID |
-| `AZURE_CLIENT_SECRET` | ✅ | — | Client secret value |
-| `INACTIVE_USER_DAYS` | No | `90` | Days of inactivity before flagging |
-| `STALE_ROLE_DAYS` | No | `90` | Days before flagging a role as stale |
-| `OUTPUT_DIR` | No | `./output` | Directory for generated reports |
+```bash
+pip install pre-commit
+pre-commit install
+```
 
 ---
 
 ## Security Notes
 
-- **Credentials are never committed** — `.env` and `output/` are in `.gitignore`
-- The service principal uses **application-only, read-only permissions** — cannot modify any resources
-- Rotate the client secret every 12 months
-- In production, replace the client secret with a **Managed Identity** or **Azure Key Vault** reference
+- The tool is designed for **read-only audit scope**.
+- It uses **application permissions** for collection and does not modify tenant configuration.
+- Do not commit `.env`, generated reports, or secrets.
+- For production hardening, prefer **Managed Identity** or **Azure Key Vault** over long-lived client secrets.
+
+---
+
+## Roadmap
+
+- Add AWS IAM collectors and reuse the same finding/reporting model.
+- Support CSV or JSON evidence export for audit workpapers.
+- Add configurable severity thresholds by environment.
+- Add manager/department enrichment for tighter orphaned-account workflows.
 
 ---
 

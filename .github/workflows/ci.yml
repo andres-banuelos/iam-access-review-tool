@@ -1,13 +1,13 @@
-name: CI — Lint & Unit Tests
+name: CI — Lint, Type Check & Unit Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, feat/professional-grade-improvements]
   pull_request:
     branches: [main]
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,12 +17,23 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt pytest
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
 
-      - name: Run unit tests
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Mypy
+        run: mypy main.py src tests
+
+      - name: Unit tests
         env:
           AZURE_TENANT_ID: "dummy-tenant"
           AZURE_CLIENT_ID: "dummy-client"
           AZURE_CLIENT_SECRET: "dummy-secret"
-        run: python -m pytest tests/ -v
+        run: pytest -v
