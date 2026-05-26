@@ -1,0 +1,62 @@
+[
+  {
+    "id": "user-001",
+    "displayName": "Admin Idle",
+    "userPrincipalName": "admin.idle@demo-corp.com",
+    "mail": "admin.idle@demo-corp.com",
+    "accountEnabled": true,
+    "createdDateTime": "2024-01-01T10:00:00+00:00",
+    "userType": "Member",
+    "lastInteractiveSignIn": "2024-02-01T10:00:00+00:00",
+    "lastNonInteractiveSignIn": null,
+    "hasLicenses": true
+  },
+  {
+    "id": "user-002",
+    "displayName": "Admin Active",
+    "userPrincipalName": "admin.active@demo-corp.com",
+    "mail": "admin.active@demo-corp.com",
+    "accountEnabled": true,
+    "createdDateTime": "2024-01-01T10:00:00+00:00",
+    "userType": "Member",
+    "lastInteractiveSignIn": "2026-05-01T10:00:00+00:00",
+    "lastNonInteractiveSignIn": null,
+    "hasLicenses": true
+  },
+  {
+    "id": "user-003",
+    "displayName": "External Vendor",
+    "userPrincipalName": "vendor@external.com",
+    "mail": "vendor@external.com",
+    "accountEnabled": true,
+    "createdDateTime": "2024-10-01T10:00:00+00:00",
+    "userType": "Guest",
+    "lastInteractiveSignIn": "2026-04-15T10:00:00+00:00",
+    "lastNonInteractiveSignIn": null,
+    "hasLicenses": false
+  },
+  {
+    "id": "user-004",
+    "displayName": "Ghost Account",
+    "userPrincipalName": "ghost@demo-corp.com",
+    "mail": "ghost@demo-corp.com",
+    "accountEnabled": true,
+    "createdDateTime": "2025-01-01T10:00:00+00:00",
+    "userType": "Member",
+    "lastInteractiveSignIn": null,
+    "lastNonInteractiveSignIn": null,
+    "hasLicenses": false
+  },
+  {
+    "id": "user-005",
+    "displayName": "New Hire",
+    "userPrincipalName": "newhire@demo-corp.com",
+    "mail": "newhire@demo-corp.com",
+    "accountEnabled": true,
+    "createdDateTime": "2026-05-20T10:00:00+00:00",
+    "userType": "Member",
+    "lastInteractiveSignIn": null,
+    "lastNonInteractiveSignIn": null,
+    "hasLicenses": true
+  }
+]

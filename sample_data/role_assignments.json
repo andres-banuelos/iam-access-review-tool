@@ -1,0 +1,26 @@
+[
+  {
+    "roleId": "r1",
+    "roleName": "Global Administrator",
+    "principalId": "user-001",
+    "principalType": "user"
+  },
+  {
+    "roleId": "r1",
+    "roleName": "Global Administrator",
+    "principalId": "user-002",
+    "principalType": "user"
+  },
+  {
+    "roleId": "r2",
+    "roleName": "Teams Administrator",
+    "principalId": "user-003",
+    "principalType": "user"
+  },
+  {
+    "roleId": "r3",
+    "roleName": "User Account Administrator",
+    "principalId": "sp-001",
+    "principalType": "servicePrincipal"
+  }
+]
