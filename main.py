@@ -1,120 +1,142 @@
 #!/usr/bin/env python3
-"""
-main.py — Entry point for the IAM Access Review Automation Tool.
+"""Command-line entry point for the IAM Access Review Automation Tool."""
 
-Usage:
-    python main.py [--tenant-name "Contoso Ltd"] [--output-dir ./output] [--format html|md|both]
+from __future__ import annotations
 
-The script:
-  1. Authenticates to Microsoft Graph via client credentials (app-only)
-  2. Collects users, directory roles, and service principals
-  3. Runs risk analysis checks
-  4. Outputs a formatted HTML and/or Markdown report
-"""
-import asyncio
 import argparse
-import os
-import sys
-from datetime import datetime
+import asyncio
+import logging
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from pathlib import Path
 
-# Allow running from project root without installing the package
-sys.path.insert(0, os.path.dirname(__file__))
-
-from src.config import TENANT_ID, OUTPUT_DIR
-from src.collectors.graph_client import get_graph_client
-from src.collectors.users import fetch_all_users
-from src.collectors.roles import fetch_directory_role_assignments, fetch_service_principals
 from src.analyzers.access_analyzer import run_all_checks
+from src.analyzers.findings import RiskLevel
+from src.collectors.graph_client import get_graph_client
+from src.collectors.roles import fetch_directory_role_assignments, fetch_service_principals
+from src.collectors.users import fetch_all_users
+from src.config import OUTPUT_DIR, TENANT_ID, require_azure_credentials
 from src.reporters.html_reporter import render_html_report
 from src.reporters.markdown_reporter import render_markdown_report
 
+LOGGER = logging.getLogger(__name__)
 
-def parse_args() -> argparse.Namespace:
+
+def configure_logging(verbose: bool = False) -> None:
+    """Configure application logging for CLI execution."""
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
-        description="IAM Access Review Automation Tool — Azure Entra ID"
+        description="IAM Access Review Automation Tool — Azure Entra ID",
     )
     parser.add_argument(
         "--tenant-name",
         default="Azure Tenant",
-        help="Human-readable tenant name for the report header (default: 'Azure Tenant')",
+        help="Human-readable tenant name for the report header.",
     )
     parser.add_argument(
         "--output-dir",
         default=OUTPUT_DIR,
-        help=f"Directory to write report files (default: {OUTPUT_DIR})",
+        help=f"Directory to write report files (default: {OUTPUT_DIR}).",
     )
     parser.add_argument(
         "--format",
         choices=["html", "md", "both"],
         default="both",
-        help="Report output format (default: both)",
+        help="Report output format.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable debug logging.",
+    )
+    return parser.parse_args(argv)
 
 
-async def main() -> None:
-    args = parse_args()
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+async def run_review(args: argparse.Namespace) -> int:
+    """Run the access review workflow and return a process exit code."""
+    require_azure_credentials()
 
-    print("=" * 60)
-    print("  IAM Access Review Automation Tool")
-    print(f"  Tenant: {args.tenant_name} ({TENANT_ID})")
-    print("=" * 60)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Step 1: Authenticate ──────────────────────────────────────────
-    print("\n[1/4] Authenticating to Microsoft Graph...")
+    LOGGER.info("Starting IAM access review for tenant '%s' (%s)", args.tenant_name, TENANT_ID)
+
     client = get_graph_client()
-    print("      ✓ Authenticated (client credentials flow)")
 
-    # ── Step 2: Collect data ──────────────────────────────────────
-    print("\n[2/4] Collecting data from Graph API...")
+    LOGGER.info("Collecting users, role assignments, and service principals from Microsoft Graph")
     users, role_assignments, service_principals = await asyncio.gather(
         fetch_all_users(client),
         fetch_directory_role_assignments(client),
         fetch_service_principals(client),
     )
-    print(f"      ✓ Users: {len(users)}")
-    print(f"      ✓ Role assignments: {len(role_assignments)}")
-    print(f"      ✓ Service principals: {len(service_principals)}")
 
-    # ── Step 3: Analyse ───────────────────────────────────────────
-    print("\n[3/4] Running risk analysis checks...")
+    LOGGER.info(
+        "Collected %s users, %s role assignments, and %s service principals",
+        len(users),
+        len(role_assignments),
+        len(service_principals),
+    )
+
     findings = run_all_checks(users, role_assignments, service_principals)
+    risk_counts = {level: sum(1 for finding in findings if finding.risk is level) for level in RiskLevel}
 
-    high   = sum(1 for f in findings if f.risk.value == "High")
-    medium = sum(1 for f in findings if f.risk.value == "Medium")
-    low    = sum(1 for f in findings if f.risk.value == "Low")
-    print(f"      ✓ {len(findings)} findings: {high} High | {medium} Medium | {low} Low")
+    LOGGER.info(
+        "Generated %s findings (High=%s, Medium=%s, Low=%s, Informational=%s)",
+        len(findings),
+        risk_counts[RiskLevel.HIGH],
+        risk_counts[RiskLevel.MEDIUM],
+        risk_counts[RiskLevel.LOW],
+        risk_counts[RiskLevel.INFO],
+    )
 
-    # ── Step 4: Report ────────────────────────────────────────────
-    print("\n[4/4] Generating reports...")
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    if args.format in ("html", "both"):
-        html_path = os.path.join(args.output_dir, f"iam_review_{ts}.html")
+    if args.format in {"html", "both"}:
+        html_path = output_dir / f"iam_review_{timestamp}.html"
         render_html_report(
-            findings        = findings,
-            tenant_name     = args.tenant_name,
-            tenant_id       = TENANT_ID,
-            total_users     = len(users),
-            total_roles     = len(role_assignments),
-            total_sps       = len(service_principals),
-            output_path     = html_path,
+            findings=findings,
+            tenant_name=args.tenant_name,
+            tenant_id=TENANT_ID,
+            total_users=len(users),
+            total_roles=len(role_assignments),
+            total_sps=len(service_principals),
+            output_path=html_path,
         )
-        print(f"      ✓ HTML report: {html_path}")
+        LOGGER.info("Wrote HTML report to %s", html_path)
 
-    if args.format in ("md", "both"):
-        md_path = os.path.join(args.output_dir, f"iam_review_{ts}.md")
+    if args.format in {"md", "both"}:
+        markdown_path = output_dir / f"iam_review_{timestamp}.md"
         render_markdown_report(
-            findings    = findings,
-            tenant_name = args.tenant_name,
-            output_path = md_path,
+            findings=findings,
+            tenant_name=args.tenant_name,
+            output_path=markdown_path,
         )
-        print(f"      ✓ Markdown report: {md_path}")
+        LOGGER.info("Wrote Markdown report to %s", markdown_path)
 
-    print("\n✓ Review complete. Open the HTML report in a browser for the full deliverable.")
-    print("=" * 60)
+    LOGGER.info("Access review complete")
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Program entry point."""
+    args = parse_args(argv)
+    configure_logging(verbose=args.verbose)
+
+    try:
+        return asyncio.run(run_review(args))
+    except KeyboardInterrupt:
+        LOGGER.warning("Execution interrupted by user")
+        return 130
+    except Exception:
+        LOGGER.exception("IAM access review failed")
+        return 1
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(main())

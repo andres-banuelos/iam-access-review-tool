@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam-access-review-tool"
+version = "0.1.0"
+description = "Automated IAM access review reporting for Microsoft Entra ID via Microsoft Graph"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Andres Banuelos" }
+]
+dependencies = [
+  "azure-identity==1.16.0",
+  "jinja2==3.1.4",
+  "msgraph-sdk==1.4.0",
+  "pandas==2.2.2",
+  "python-dotenv==1.0.1",
+  "requests==2.31.0",
+  "tqdm==4.66.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.10.0",
+  "pytest>=8.2.0",
+  "ruff>=0.6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+strict_optional = true

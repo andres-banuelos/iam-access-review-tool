@@ -1,70 +1,59 @@
-"""
-html_reporter.py — Render findings into a professional HTML audit report.
+"""HTML report generation for IAM access review findings."""
 
-Uses Jinja2 templating. The template lives in templates/report.html.j2 so
-non-developers can tweak formatting without touching Python code.
-"""
 from __future__ import annotations
-import os
+
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from src.analyzers.findings import Finding, RiskLevel
 
+TEMPLATE_DIR = Path(__file__).resolve().parents[2] / "templates"
 
-TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
 
 
 def render_html_report(
-    findings: List[Finding],
+    findings: list[Finding],
     tenant_name: str,
     tenant_id: str,
     total_users: int,
     total_roles: int,
     total_sps: int,
-    output_path: str,
+    output_path: str | Path,
 ) -> str:
-    """
-    Render findings to an HTML file and return the output path.
-    """
-    env = Environment(
+    """Render findings into an HTML report and return the absolute output path."""
+    environment = Environment(
         loader=FileSystemLoader(str(TEMPLATE_DIR)),
-        autoescape=True,
+        autoescape=select_autoescape(enabled_extensions=("html", "xml")),
+    )
+    template = environment.get_template("report.html.j2")
+
+    counts = {risk_level: 0 for risk_level in RiskLevel}
+    grouped_findings: dict[str, list[Finding]] = defaultdict(list)
+
+    for finding in findings:
+        counts[finding.risk] += 1
+        grouped_findings[finding.category.value].append(finding)
+
+    generated_at = datetime.now(timezone.utc)
+    rendered_html = template.render(
+        tenant_name=tenant_name,
+        tenant_id=tenant_id,
+        report_date=generated_at.strftime("%B %d, %Y"),
+        report_time=generated_at.strftime("%H:%M UTC"),
+        total_users=total_users,
+        total_roles=total_roles,
+        total_sps=total_sps,
+        total_findings=len(findings),
+        counts=counts,
+        findings=findings,
+        grouped=dict(grouped_findings),
+        RiskLevel=RiskLevel,
     )
 
-    template = env.get_template("report.html.j2")
-
-    counts = {r: 0 for r in RiskLevel}
-    for f in findings:
-        counts[f.risk] += 1
-
-    from collections import defaultdict
-    grouped = defaultdict(list)
-    for f in findings:
-        grouped[f.category.value].append(f)
-
-    now = datetime.now(timezone.utc)
-
-    html = template.render(
-        tenant_name   = tenant_name,
-        tenant_id     = tenant_id,
-        report_date   = now.strftime("%B %d, %Y"),
-        report_time   = now.strftime("%H:%M UTC"),
-        total_users   = total_users,
-        total_roles   = total_roles,
-        total_sps     = total_sps,
-        total_findings= len(findings),
-        counts        = counts,
-        findings      = findings,
-        grouped       = dict(grouped),
-        RiskLevel     = RiskLevel,
-    )
-
-    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as fh:
-        fh.write(html)
-
-    return os.path.abspath(output_path)
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(rendered_html, encoding="utf-8")
+    return str(destination.resolve())
